@@ -1,5 +1,5 @@
 import * as bcrypt  from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+//import jwt from 'jsonwebtoken';
 
 
 const { PrismaClient } = require('@prisma/client');
@@ -250,23 +250,23 @@ export async function signUp(name: string, email: string, password:string, phone
     });
 }
 
-export async function login(email: string, password:string) {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-        throw new Error('Tài khoản không tồn tại!');
-    }
+// export async function login(email: string, password:string) {
+//     const user = await prisma.user.findUnique({ where: { email } });
+//     if (!user) {
+//         throw new Error('Tài khoản không tồn tại!');
+//     }
     
-      // Mã hóa mật khẩu
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-    throw new Error('Mật khẩu không chính xác!');
-    }
+//       // Mã hóa mật khẩu
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//     throw new Error('Mật khẩu không chính xác!');
+//     }
 
-    const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET || 'secret_key',  // Bạn cần thay 'secret_key' bằng một khóa bảo mật
-        { expiresIn: '1h' }
-    );
-    return token;
-}
+//     const token = jwt.sign(
+//         { userId: user.id, email: user.email },
+//         process.env.JWT_SECRET || 'secret_key',  // Bạn cần thay 'secret_key' bằng một khóa bảo mật
+//         { expiresIn: '1h' }
+//     );
+//     return token;
+// }
 

@@ -147,24 +147,24 @@ route.post("/register", async(c) => {
 /**
  * Đăng nhập
  */
-route.post("/login", async (c) => {
-  try {
-    const { email, password } = await c.req.json();
-    const response = query.login(email, password);
-    return c.json(response);
-  } catch(error) {
-    if(error instanceof Error) {
-      return c.text(error.message);
-    }
-  }
-});
+// route.post("/login", async (c) => {
+//   try {
+//     const { email, password } = await c.req.json();
+//     const response = query.login(email, password);
+//     return c.json(response);
+//   } catch(error) {
+//     if(error instanceof Error) {
+//       return c.text(error.message);
+//     }
+//   }
+// });
 
-/**
- * Quên mật khẩu
- */
-route.put("forgot-password", async (c) => {
+// /**
+//  * Quên mật khẩu
+//  */
+// route.put("forgot-password", async (c) => {
   
-});
+// });
 
 
 
