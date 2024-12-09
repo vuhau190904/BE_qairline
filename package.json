@@ -1,0 +1,16 @@
+{
+  "name": "BE_flightBoolingApp",
+  "scripts": {
+    "dev": "bun run --hot src/app.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.1",
+    "bcryptjs": "^2.4.3",
+    "hono": "^4.6.12"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/bun": "latest",
+    "prisma": "^6.0.1"
+  }
+}
