@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import * as query from "../prisma/query.js";
+import * as query from "../prisma/user_query";
 
 const route = new Hono();
 
@@ -35,7 +35,7 @@ route.put("/tickets/:reservation_id", async (c) => {
     if (isNaN(reservation_id)) {
         return c.text("Reservation ID không đúng định dạng");
     }
-
+    console.log("CHECK");
     const response = await query.cancelTicket(reservation_id);
 
     return c.text("Huỷ vé thành công");
@@ -72,7 +72,7 @@ route.post("/tickets", async (c) => {
  */
 route.post("/flights", async (c) => {
   try {
-    const { kind, from, to, departure_time, arrival_time, person, ticket_class } = await c.req.json();
+    const {from, to, departure_time, person, ticket_class } = await c.req.json();
 
     if (!from || !to || !departure_time || !person || !ticket_class) {
       return c.text("Thiếu tham số"); 
@@ -80,12 +80,7 @@ route.post("/flights", async (c) => {
 
     const departure = await query.searchFlights(from, to, departure_time, person, ticket_class);
 
-    if (kind === "One-way") {
-      return c.json(departure); 
-    }
-
-    const arrival = await query.searchFlights(to, from, arrival_time, person, ticket_class);
-    return c.json({ departure, arrival }); 
+    return c.json(departure); 
   } catch (error) {
     if (error instanceof Error) {
         return c.text(error.message);
@@ -128,44 +123,4 @@ route.get("/news", async (c) => {
     }
   }
 });
-
-/**
- * Đăng kí
- */
-route.post("/register", async(c) => {
-  try {
-    const {name, email, password, phone, created_at} = await c.req.json();
-    const response = await query.signUp(name, email, password, phone, created_at); 
-    return c.text("Tạo tài khoản thành công");
-  } catch (error) {
-    if(error instanceof Error) {
-      return c.text(error.message);
-    }
-  }
-});
-
-/**
- * Đăng nhập
- */
-// route.post("/login", async (c) => {
-//   try {
-//     const { email, password } = await c.req.json();
-//     const response = query.login(email, password);
-//     return c.json(response);
-//   } catch(error) {
-//     if(error instanceof Error) {
-//       return c.text(error.message);
-//     }
-//   }
-// });
-
-// /**
-//  * Quên mật khẩu
-//  */
-// route.put("forgot-password", async (c) => {
-  
-// });
-
-
-
 export default route;

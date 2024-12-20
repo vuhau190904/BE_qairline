@@ -1,7 +1,3 @@
-import * as bcrypt  from 'bcryptjs';
-//import jwt from 'jsonwebtoken';
-
-
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -31,16 +27,25 @@ export async function cancelTicket(reservation_id: number) {
     if (!reservation) {
         throw new Error("Huỷ vé thất bại do không tồn tại mã đặt chỗ là " + reservation_id);
     }
-
-    const flight_id = reservation[0].flight_id;
+    const flight_id = reservation.flight_id;
+    console.log(flight_id);
     const seat = await prisma.tickets.findMany({
         where: {
             reservation_id: reservation_id,
         },
         select: {
-            seat_number: true
+            seat_number: true,
+            price: true,
         }
     });
+    let sum: number = 0;
+    for(const x of seat) {
+        sum += x.price;
+    }
+    let array = [];
+    for(var x of seat) {
+        array.push(x.seat_number);
+    }
     // Thực hiện xóa bản ghi nếu tồn tại
     await prisma.reservations.update({
         where: { reservation_id },
@@ -49,7 +54,7 @@ export async function cancelTicket(reservation_id: number) {
         }
     });
 
-    await prisma.tickets.update({
+    await prisma.tickets.updateMany({
         where: { reservation_id: reservation_id },
         data: {
             status: "Cancelled",
@@ -58,17 +63,32 @@ export async function cancelTicket(reservation_id: number) {
 
 
 
-    for(const x of seat) {
-        await prisma.seat_assignments.update({
-            where: {
-                flight_id: flight_id,
-                seat_number: x.seat_number
-            },
-            data: {
-                status: "Available",
+    await prisma.seat_assignments.updateMany({
+        where: {
+            flight_id: flight_id,
+            seat_number: {
+                in: array,
             }
-        });
-    }
+        },
+        data: {
+            status: "Available",
+        }
+    });
+
+    await prisma.flight_stats.updateMany({
+        where: {
+            flight_id: flight_id,
+        },
+        data: {
+            total_tickets: {
+                increment: - seat.length,
+            },
+            total_revenue: {
+                increment: - sum,
+            }
+        }
+    });
+
 
 }
 
@@ -82,7 +102,7 @@ export async function bookTicket(customer_id: number, flight_id: number, seat_nu
             status: 'Confirmed', // Hoặc trạng thái khác tùy theo yêu cầu
         },
     });
-
+    console.log(reservation.reservation_id);
     const ticket = await prisma.tickets.create({
         data: {
             reservation_id: reservation.reservation_id,
@@ -93,14 +113,31 @@ export async function bookTicket(customer_id: number, flight_id: number, seat_nu
         },
     });
 
-    const seat = await prisma.seat_assignments.update({
+    const seat = await prisma.seat_assignments.updateMany({
         where: {
-            flight_id: flight_id,
-            seat_number: seat_number,
-            class: ticket_class
+            AND:[
+                {flight_id: flight_id},
+                {seat_number: seat_number},
+                {class: ticket_class}
+            ]
         },
         data: {
             status: "Booked",
+        }
+    });
+
+    await prisma.flight_stats.updateMany({
+        where: {
+            flight_id: flight_id,
+        },
+        data: {
+            total_tickets: {
+                increment: 1,
+            },
+            total_revenue: {
+                increment: ticket_price,
+            },
+            last_updated: booking_date,
         }
     });
 
@@ -147,14 +184,7 @@ export async function searchFlights(from: string, to: string, date: Date, person
           airports_flights_arrival_airportToairports: {
             location: to,  // location đến là 'to'
           },
-          OR: [
-            {
-              departure_time: date, // Điều kiện 1
-            },
-            {
               updated_departure_time: date, // Điều kiện 2
-            },
-        ],
         },
         include: {
           airports_flights_departure_airportToairports: true,  // Đưa thông tin sân bay xuất phát vào
@@ -163,7 +193,7 @@ export async function searchFlights(from: string, to: string, date: Date, person
             take: 1,
             where: {
               start_date: {
-                gt: date 
+                lt: date 
               },
               end_date: {
                 gt: date
@@ -178,7 +208,7 @@ export async function searchFlights(from: string, to: string, date: Date, person
           },   // Đưa thông tin sân bay đến vào
         },
       });
-      if(flights.length() === 0) throw new Error("Không có chuyến bay nào như bạn yêu cầu");
+      if(!flights) throw new Error("Không có chuyến bay nào như bạn yêu cầu");
       return flights;
       
       
@@ -228,45 +258,4 @@ export async function news() {
     const promotions = await prisma.promotions.findMany({});
     return {news, promotions};
 }
-
-export async function signUp(name: string, email: string, password:string, phone:string, created_at: Date) {
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-
-    if (existingUser) {
-        throw new Error('Email đã tồn tại!');
-    }
-    
-      // Mã hóa mật khẩu
-    const hashedPassword = await bcrypt.hash(password, 10);
-    
-    const customer = await prisma.customers.create({
-        data: {
-            name: name,
-            email: email,
-            password_hash: hashedPassword,
-            phone: phone,
-            created_at: created_at
-        }
-    });
-}
-
-// export async function login(email: string, password:string) {
-//     const user = await prisma.user.findUnique({ where: { email } });
-//     if (!user) {
-//         throw new Error('Tài khoản không tồn tại!');
-//     }
-    
-//       // Mã hóa mật khẩu
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//     throw new Error('Mật khẩu không chính xác!');
-//     }
-
-//     const token = jwt.sign(
-//         { userId: user.id, email: user.email },
-//         process.env.JWT_SECRET || 'secret_key',  // Bạn cần thay 'secret_key' bằng một khóa bảo mật
-//         { expiresIn: '1h' }
-//     );
-//     return token;
-// }
 
